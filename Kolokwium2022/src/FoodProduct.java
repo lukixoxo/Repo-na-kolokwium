@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 
 public class FoodProduct extends Product{
-     String name;
      String[] provinces;
      Map<String, Double[]> regionPrices;
 

@@ -21,8 +21,13 @@ public class Main {
 
         Product.printAllProducts();
 
-        Product x = Product.getProducts("Bu");
-        System.out.println(x.getName());
+        Cart cart = new Cart();
+        cart.addProduct(Product.getProducts("Gaz"), 4);
 
+        double wartosc = cart.getPrice(2010,1);
+        System.out.println(wartosc);
+
+        double inflation = cart.getInflation(2010,1,2010,6);
+        System.out.println(inflation);
     }
 }
