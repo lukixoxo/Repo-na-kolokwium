@@ -1,0 +1,177 @@
+Całość sprowadza się do trzech głównych etapów:
+
+Adres i Port (Wybieranie numeru) 📍: Aby się połączyć, musisz wiedzieć, gdzie "dzwonić". 
+Adres (np. "localhost") to numer telefonu komputera docelowego, a port (np. 5000)
+ to numer wewnętrzny prowadzący do konkretnej aplikacji na tym komputerze.
+
+Gniazdo (Nawiązanie połączenia) 🔌: Klasa Socket w Javie to fizyczna reprezentacja tego połączenia (nasz wirtualny kabel).
+ Kiedy w kodzie piszesz new Socket("localhost", 5000);,
+ Twój program wysyła prośbę o połączenie. Jeśli serwer nasłuchuje na tym porcie, połączenie zostaje nawiązane.
+
+Strumienie (Słuchawka i Mikrofon) 🌊: Kiedy masz już połączone gniazdo (Socket),
+ musisz przesyłać przez nie dane. Służą do tego strumienie (ang. streams). 
+ W naszym zadaniu pobieraliśmy dane z serwera, więc użyliśmy tzw. 
+ strumienia wejściowego, wyciągając go prosto z naszego gniazda za pomocą metody: socket.getInputStream().
+ 
+ 1. Podstawy połączenia (Gniazda / Sockets)
+Serwer: Otwieranie portu i czekanie na klienta
+Metoda accept() zatrzymuje program (blokuje wątek) i czeka, aż ktoś się podłączy.
+ // Tworzenie serwera na porcie 5000
+ServerSocket serverSocket = new ServerSocket(5000);
+
+// Czekanie na połączenie (ta linijka "wisi" dopóki ktoś się nie połączy)
+Socket clientSocket = serverSocket.accept(); 
+System.out.println("Nowy klient podłączony!");
+// Łączenie z "localhost" (Twoim komputerem) na porcie 5000
+Socket socket = new Socket("localhost", 5000);
+
+
+2. Narzędzia do wysyłania i odbierania
+Zawsze wyciągasz je z obiektu Socket.
+Nadajnik (Wysyłanie tekstu)
+// Drugi argument (true) to tzw. auto-flush - sprawia, że wiadomość 
+// leci od razu po użyciu println, bez konieczności ręcznego wypychania.
+PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+out.println("Twoja wiadomość");
+
+Odbiornik (Odbieranie tekstu):
+// Złożona konstrukcja, która pozwala czytać dane wygodnie, linijka po linijce
+BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+// Odczyt (readLine również blokuje wątek i czeka na nadejście wiadomości)
+String odebranaWiadomosc = in.readLine();
+
+
+3. Pętle nasłuchujące (Kluczowy wzorzec)
+Aby serwer i klient nie kończyli działania po jednej wiadomości, używamy pętli.
+
+Pętla serwera (przyjmowanie wielu klientów):
+while (true) {
+    Socket clientSocket = serverSocket.accept(); // czeka na klienta
+    // Gdy klient się połączy, tworzymy dla niego OSOBNY wątek
+    ClientThread thread = new ClientThread(clientSocket);
+    thread.start();
+}
+
+Pętla odbiornika (czekanie na wiadomości):
+Ten kod zwraca null, gdy ktoś po drugiej stronie zamknie połączenie (np. zamknie okno krzyżykiem).
+String message;
+while ((message = in.readLine()) != null) {
+    System.out.println("Otrzymano: " + message);
+    // Tutaj wrzucasz if'y sprawdzające komendy
+}
+// Jeśli pętla się skończy (zwróci null), klient się rozłączył
+
+
+4. Wielowątkowość (Klasa Thread)
+Bez tego aplikacja "zamrozi" się na pierwszej lepszej metodzie readLine() lub accept(). Interfejs graficzny musi mieć własny wątek (żebyś mógł klikać przyciski), a nasłuchiwanie musi działać w tle.
+public class MojWatek extends Thread {
+    // Konstruktor do przekazania danych (np. Socketu)
+    public MojWatek() { ... }
+
+    // Ta metoda wykonuje się w tle po wywołaniu start()
+    public void run() {
+        // Tu wrzucamy pętle while(...) lub skomplikowane obliczenia
+    }
+}
+
+// Użycie:
+MojWatek watek = new MojWatek();
+watek.start(); // ZAWSZE start(), NIGDY run()!
+
+
+
+
+
+SWING:
+1. Podstawa aplikacji: Okno główne (JFrame)
+Każda aplikacja okienkowa musi mieć swoje główne okno, na którym układa się resztę elementów.
+public class MojeOkno extends JFrame {
+    public MojeOkno() {
+        setTitle("Mój super program"); // Tytuł okna
+        setSize(500, 400); // Szerokość, Wysokość
+        
+        // Co ma się stać po kliknięciu X (Złota zasada: bez tego program będzie działał w tle!)
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); 
+        
+        // Okno domyślnie jest niewidoczne, to musi być na samym końcu konstruktora
+        setVisible(true); 
+    }
+}
+
+2. Główne "klocki" (Komponenty)
+Wszystko w Swingu zaczyna się od litery J.
+
+JButton – Przycisk.
+
+JTextField – Jednolinijkowe pole do wpisywania tekstu.
+
+JTextArea – Wielolinijkowe pole tekstowe (często używane jako logi serwera lub okno czatu). Warto zablokować w nim pisanie: textArea.setEditable(false);
+
+JPanel – "Pudełko" na inne komponenty. Używa się go, gdy chcesz zgrupować kilka rzeczy (np. pole tekstowe i przycisk) w jednym miejscu.
+
+
+3. Układanie klocków (Layout Managers)
+W Swingu nie ustawiamy elementów podając im współrzędne X i Y w pikselach. Używamy "Kierowników układu", którzy sami skalują elementy przy zmianie rozmiaru okna. Najpopularniejszy (i domyślny dla JFrame) to BorderLayout.
+
+Dzieli on okno na 5 stref: NORTH, SOUTH, EAST, WEST, CENTER. Strefa CENTER zawsze rozciąga się na całe wolne miejsce.
+
+
+setLayout(new BorderLayout());
+
+JButton btnNorth = new JButton("Góra");
+JTextArea txtCenter = new JTextArea("Środek - zajmie najwięcej miejsca");
+JPanel bottomPanel = new JPanel(); // Pudełko na dół
+
+// Dodawanie elementów w konkretne strefy
+add(btnNorth, BorderLayout.NORTH);
+add(txtCenter, BorderLayout.CENTER);
+add(bottomPanel, BorderLayout.SOUTH);
+
+
+4. Tchnienie życia: Akcje i Listenery
+Bez tego przyciski można klikać, ale nic się nie dzieje. Najszybszy i najnowocześniejszy sposób na obsługę kliknięć to użycie tzw. lambd (strzałek ->).
+
+JButton sendButton = new JButton("Wyślij");
+JTextField inputField = new JTextField(20);
+
+// Reakcja na kliknięcie przycisku
+sendButton.addActionListener(e -> {
+    System.out.println("Kliknięto przycisk!");
+    String wpisanyTekst = inputField.getText();
+});
+
+// Reakcja na wciśnięcie klawisza ENTER, gdy kursor jest w polu tekstowym
+inputField.addActionListener(e -> {
+    System.out.println("Wciśnięto ENTER!");
+});
+
+
+
+5. Listy i Modele (JList + DefaultListModel)
+To jedno z najczęstszych pytań na labach. Aby zmienić zawartość listy w trakcie działania programu (np. po wejściu nowego użytkownika), nie dodajemy elementów do samej listy. Dodajemy je do jej "Modelu".
+// 1. Tworzymy Model (Kierownika danych)
+DefaultListModel<String> model = new DefaultListModel<>();
+
+// 2. Tworzymy listę i dajemy jej Kierownika
+JList<String> list = new JList<>(model);
+
+// 3. W trakcie działania programu pracujemy TYLKO na modelu
+model.addElement("Janek"); // Dodaje do listy
+model.removeElement("Janek"); // Usuwa z listy
+model.clear(); // Czyści całą listę
+
+
+
+
+6. Wyskakujące okienka (JOptionPane)
+Szybki sposób na pytania i ostrzeżenia bez budowania własnych, nowych okien (JFrame).
+
+Pobieranie tekstu (np. login):
+String imie = JOptionPane.showInputDialog("Podaj swoje imię:");
+// Uwaga: jeśli użytkownik kliknie 'Anuluj', zmienna 'imie' będzie równa null!
+
+Zwykły komunikat o błędzie/sukcesie:
+// Pierwszy argument to "okno-rodzic" (zazwyczaj wpisuje się null, żeby wyśrodkować na ekranie)
+JOptionPane.showMessageDialog(null, "Logowanie nieudane!", "Błąd", JOptionPane.ERROR_MESSAGE);
+
